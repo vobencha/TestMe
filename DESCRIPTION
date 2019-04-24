@@ -1,0 +1,9 @@
+Package: TestMe 
+Type: Package
+Title: Test package
+Version: 1.0.0
+Author: Valerie Obenchain 
+Maintainer: Valerie Obenchain <obenchav@gene.com>
+Description: This is a test package.
+Depends: methods
+License: Artistic-2.0
