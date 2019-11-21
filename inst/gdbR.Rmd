@@ -1,0 +1,210 @@
+---
+title: "gdbR: R Client for the Genomics Platform Database"
+author: "Valerie Obenchain"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{gdbR: R Client for the Genomics Platform Database}
+  %\VignetteEncoding{UTF-8}
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 4
+---
+
+#```{r biocstyle, echo=FALSE, warning=FALSE}
+#suppressPackageStartupMessages({
+#    library(GenomicRanges)
+#    library(SummarizedExperiment)
+#    library(RaggedExperiment)
+#})
+#```
+
+# Introduction
+
+The `gdbR` package provides an client interface to datasets in the 
+Genomics Platform database.
+
+The package provides functions to browse and download existing datasets
+as well as save new datasets.
+
+```{r load-libs}
+library(gdbR)
+```
+
+# Explore dataset metadata
+
+## General browsing
+
+The `gdbDatasets()` function returns a list of datasets your user id has
+permission to access.
+```{r gdb-create}
+gdb <- gdbDatasets()
+```
+
+This object displays the "DS" identifier and title. You can interact with it much as
+you would a list. A '[' subset will return a new list with the specified elements
+and the double bracket subset '[[' returns detailed metadata for an individual dataset.
+```{r gdb-subset}
+## The full list
+gdb
+
+## Subset the list
+gdb[1:3]
+
+## Extract metadata for a particular dataset
+gdb[[5]]
+```
+
+A number of helpers are available to extract metadata terms from the
+`GDBProjectList`. These terms can be used to subset the list or in 
+a full database search. (NOTE: Full search not implemented yet.)
+See the ?`GDBProjectList` man page for a full list of helper
+functions.
+
+* `availableDatasetIDs`: 
+  A character vector of dataset ids assigned by the database.
+  Dataset ids are unique.
+* `availableTitles`: 
+  A character vector of dataset titles. Titles are unique.
+* `availableOrganisms`: 
+  A character vector of unique organisms. Organisms are not
+  unique across datasets. 
+* `availablePlatforms`: 
+  A character vector of unique platforms. Platforms are not
+  unique across datasets.
+* `availableSources`: 
+  A character vector of unique data sources, e.g., ExpressionPlot, 
+  FDB, GEO. Sources are not unique across datasets. 
+* `availableSourceIDs`: 
+  A chacter vector of unique source ids, e.g., PRJ001, NGS001, 
+  FDB001. Source IDs are not unique across datsets.
+
+```{r gdb-discovery}
+head(availableDatasetIDs(gdb))
+head(availableSourceIDs(gdb))
+```
+
+## ExpressionPlot Projects
+
+All ExpressionPlot Projects were imported to the Genomics Platform 
+database and assigned a unique dataset identifier (e.g., "DS" id). The
+ExpressionPlot PRJ id is considered a "source id" and can be retrieved
+with `availableEPProjects()`.
+
+```{r gdb-availableEPProjects}
+head(availableEPProjects(gdb))
+```
+
+Some functions in `gdbR` accept either a DS id or PRJ id as input but
+the majority expect the DS id. A PRJ can be mapped to the associated
+DS id with `mapEPtoDS`. The return object is a `data.frame` with 
+ep_id, dataset_id and dataset_title.
+
+```{r gdb-mapEPtoDS}
+mapEPtoDS("PRJ0031967")
+```
+
+## FireDB and NGS Pipeline Projects
+
+TBD
+
+# Full database search
+
+TBD
+
+# Download existing datasets
+
+Datasets can be downloaded as `MultiAssayExperiment` objects. Each dataset has
+one or more assays which is associated with one or more resources. In terms of
+`MultiAssayExperiment` structure, each assay becomes a `SummarizedExperiment` and
+each associated resource is a matrix in the @assays slot of the `SummarizedExperiment`.
+
+Retrieve the dataset with the DS identifier:
+
+```{r gdb-getDatasetAsMAE-ds}
+head(availableDatasetIDs(gdb))
+mae <- getDatasetAsMAE("DS000003074")
+```
+
+Source identifiers can also be used for retrieval:
+```{r gdb-getDatasetAsMAE-source}
+head(availableSourceIDs(gdb))
+mae <- getDatasetAsMAE("NGS2480")
+```
+
+This mae has a single `SummarizedExperiment` with two resources in
+the assays slot.
+
+```{r gdb-getDatasetAsMAE-explore}
+names(mae)
+se <- experiments(mae)[[1]]
+assays(se)
+```
+
+# Save new datasets
+
+
+
+
+# Versioning and Relationships
+
+Datasets consist of assays, resources and samples.
+The assay data are immutable but other characteristics can be
+modified. When a change is made either a new version is created or an entirely
+new dataset is created.
+
+Actions that result in a new version of the dataset:
+- Modifying the dataset metadata, e.g., changing the title, abstract
+- Modifying the assay metadata, e.g., changing the title 
+- Modifying the sample metadata, e.g., adding new covariates
+
+Actions that result in a new dataset:
+- Change in sample membership (samples are added or removed)
+- Merging or subsetting datasets
+
+ 
+Relationships: TBD
+
+# Dataset access
+
+## Read access
+
+By default read access to a dataset is private.
+
+* Private read: The dataset is only visable by people listed in 
+`peopleAccess(GDBParam)`.
+* Public read: The dataset is visable by everyone in the Bioinfo group
+(others?). Group membership is checked by d-list/LDAP.
+
+When adding a new dataset, read access can be set to public with 
+`isPublic=TRUE` in the `GDBParam` object.
+
+TBD: How to change read access in an existing dataset.
+
+## Write access
+
+Write access is restricted to persons listed in `peopleAccess(GDBParam)`.
+The `peopleAccess` getter returns a data.frame of user id and roles.
+Any user specified in this data.frame, reguardless of role, will have 
+write access to the dataset.
+
+Three roles are possible in the `peopleAccess` data.frame:: 
+* Creator: The developer who adds the new dataset.
+* Analyst: The bioinformatician analyzing the data
+* PI: The lab head or person leading the experiment
+
+# Shiny App
+
+TBD
+
+# REST API
+
+## Import Endpoints
+
+TBD
+
+## Export Endpoints
+
+http://gred-rstudio-p01.sc1.roche.com:3939/gdb
+
